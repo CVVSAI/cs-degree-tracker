@@ -1,9 +1,10 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
-import Dashboard from "./pages/Dashboard";
+// import Dashboard from "./pages/Dashboard";
 import Home from "./pages/Home"; 
 import Courses from "./pages/Courses";
 import Settings from "./pages/Settings";
+import DegreeTracker from "./pages/DegreeTracker";
 
 function App() {
   return (
@@ -12,7 +13,7 @@ function App() {
         <Navbar />
         <Routes>
           <Route path="/" element={<Home />} />  
-          <Route path="/degree-tracker" element={<Dashboard />} />
+          <Route path="/degree-tracker" element={<DegreeTracker />} />
           <Route path="/courses" element={<Courses />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>
