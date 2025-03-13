@@ -2,6 +2,13 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { coreCourses, electives, degreeTracks } from "../data/courses";
 
+const gradePoints: { [key: string]: number } = {
+  "A": 4.0, "A-": 3.7,
+  "B+": 3.3, "B": 3.0, "B-": 2.7,
+  "C+": 2.3, "C": 2.0, "C-": 1.7,
+  "D+": 1.3, "D": 1.0, "F": 0.0
+};
+
 const DegreeTracker = () => {
   const [track, setTrack] = useState("coursework");
   const [semester, setSemester] = useState("");
@@ -11,6 +18,10 @@ const DegreeTracker = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [projectCourse, setProjectCourse] = useState("");
   const [projectCredits, setProjectCredits] = useState(0);
+  const [showGpaTracker, setShowGpaTracker] = useState(false);
+  const [courseGrades, setCourseGrades] = useState<{ [key: string]: { grade: string; credits: number } }>({});
+
+
   const navigate = useNavigate();
 
   const totalRequiredCourses = degreeTracks[track].totalCourses;
@@ -28,31 +39,51 @@ const DegreeTracker = () => {
   }, 0);
 
   // Toggle course selection
-  const toggleCourse = (courseId: string) => {
+  const toggleCourse = (courseId: string, credits: number) => {
     setCompletedCourses(prev =>
       prev.includes(courseId)
         ? prev.filter(id => id !== courseId)
         : [...prev, courseId]
     );
+
+    if (!courseGrades[courseId]) {
+      setCourseGrades(prev => ({ ...prev, [courseId]: { grade: "A", credits } })); // Default grade
+    }
   };
 
+  const missingRequirements: string[] = [];
   // Ensure at least one course is taken from each core category
   const isCoreComplete = Object.keys(coreCourses).every(category =>
     coreCourses[category].some(course => completedCourses.includes(course.id))
   );
+  if (!isCoreComplete) missingRequirements.push("Complete at least one course from each Core Subject Area");
+
 
   // Ensure the correct number of electives is taken based on the track
   const requiredElectives = track === "coursework" ? 7 : track === "project" ? 5 : 4;
   const completedElectives = electives.filter(course => completedCourses.includes(course.id)).length;
   const isElectivesComplete = completedElectives >= requiredElectives;
+  if (!isElectivesComplete) missingRequirements.push(`Complete at least ${requiredElectives} elective courses`);
+
   const isPracticumComplete = completedCourses.includes(practicumCourse.id);
+  if (!isPracticumComplete) missingRequirements.push("Complete CS 596R: Computer Science Master’s Practicum");
 
   const isProjectComplete = track !== "project" || (projectCourse && projectCredits >= 6);
+  if (track === "project" && !isProjectComplete) missingRequirements.push("Select CS 597R or CS 599R and complete at least 6 project credits");
 
   // Calculate progress percentage
   const completedCount = completedCourses.length;
   const totalCoursesNeeded = Object.keys(coreCourses).length + requiredElectives;
   const progress = Math.round((completedCount / totalCoursesNeeded) * 100);
+
+  // Calculate GPA
+  const calculateGPA = () => {
+    const totalQualityPoints = Object.values(courseGrades).reduce(
+      (acc, { grade, credits }) => acc + (gradePoints[grade] || 0) * credits, 0
+    );
+    const totalCreditHours = Object.values(courseGrades).reduce((acc, { credits }) => acc + credits, 0);
+    return totalCreditHours ? (totalQualityPoints / totalCreditHours).toFixed(2) : "0.00";
+  };
 
   // Check completion status
   const checkCompletion = () => {
@@ -82,6 +113,24 @@ const DegreeTracker = () => {
     <div className="container mx-auto p-6">
       <h1 className="text-3xl font-bold text-center text-gray-800">📜 Degree Tracker</h1>
 
+      {/* Progress Bar */}
+      <div className="mt-6 bg-gray-200 rounded-full h-6 w-full">
+        <div className="bg-blue-500 h-6 rounded-full" style={{ width: `${progress}%` }}></div>
+      </div>
+      <p className="text-gray-700 mt-2 text-center">{progress}% Complete</p>
+
+      {/* Missing Requirements Checklist */}
+      {missingRequirements.length > 0 && (
+        <div className="mt-4 bg-red-100 border-l-4 border-red-500 p-4">
+          <h3 className="text-red-700 font-semibold">Incomplete Requirements:</h3>
+          <ul className="list-disc list-inside text-red-600">
+            {missingRequirements.map((req, index) => (
+              <li key={index}>{req}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Track Selection */}
       <div className="mt-6">
         <label className="block text-gray-700 font-medium">Select Your Track</label>
@@ -97,6 +146,62 @@ const DegreeTracker = () => {
           ))}
         </select>
       </div>
+
+      {/* GPA Tracker Button */}
+      <button
+        onClick={() => setShowGpaTracker(!showGpaTracker)}
+        className="mt-4 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition"
+      >
+        {showGpaTracker ? "Hide GPA Tracker" : "Show GPA Tracker"}
+      </button>
+
+      {/* GPA Tracker Popup */}
+      {showGpaTracker && (
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-1/2">
+            <h2 className="text-xl font-semibold mb-4">GPA Tracker</h2>
+            {completedCourses.length > 0 ? (
+              completedCourses.map(courseId => (
+                <div key={courseId} className="mt-2">
+                  <p className="font-medium">{courseId}</p>
+                  <label className="mr-2">Grade:</label>
+                  <select
+                    value={courseGrades[courseId]?.grade || "A"}
+                    onChange={e =>
+                      setCourseGrades(prev => ({
+                        ...prev,
+                        [courseId]: { ...prev[courseId], grade: e.target.value }
+                      }))
+                    }
+                    className="p-2 border rounded-lg"
+                  >
+                    {Object.keys(gradePoints).map(grade => (
+                      <option key={grade} value={grade}>
+                        {grade}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-600">No courses selected.</p>
+            )}
+
+            {/* Display GPA */}
+            <div className="mt-4">
+              <h3 className="text-lg font-semibold">Your GPA: {calculateGPA()}</h3>
+            </div>
+
+            {/* Close Button */}
+            <button
+              onClick={() => setShowGpaTracker(false)}
+              className="mt-4 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Project Track - Required CS 597R / CS 599R */}
       {track === "project" && (
@@ -171,7 +276,7 @@ const DegreeTracker = () => {
                 <input
                   type="checkbox"
                   checked={completedCourses.includes(course.id)}
-                  onChange={() => toggleCourse(course.id)}
+                  onChange={() => toggleCourse(course.id, course.credits)}
                   className="mr-2"
                 />
                 {course.id} - {course.name} ({course.credits} credits)
@@ -188,7 +293,7 @@ const DegreeTracker = () => {
           <input
             type="checkbox"
             checked={completedCourses.includes(practicumCourse.id)}
-            onChange={() => toggleCourse(practicumCourse.id)}
+            onChange={() => toggleCourse(practicumCourse.id, practicumCourse.credits)}
             className="mr-2"
           />
           {practicumCourse.id} - {practicumCourse.name} ({practicumCourse.credits} credits)
@@ -226,7 +331,7 @@ const DegreeTracker = () => {
                 <input
                   type="checkbox"
                   checked={completedCourses.includes(course.id)}
-                  onChange={() => toggleCourse(course.id)}
+                  onChange={() => toggleCourse(course.id, course.credits)}
                   className="mr-2"
                 />
                 {course.id} - {course.name} ({course.credits} credits)
