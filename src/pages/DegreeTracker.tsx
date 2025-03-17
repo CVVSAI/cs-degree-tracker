@@ -17,10 +17,11 @@ const DegreeTracker = () => {
   const [showElectives, setShowElectives] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [projectCourse, setProjectCourse] = useState("");
+  const [showThesisReminder, setShowThesisReminder] = useState(false);
   const [projectCredits, setProjectCredits] = useState(0);
   const [showGpaTracker, setShowGpaTracker] = useState(false);
+  const [selectedThesisCourse, setSelectedThesisCourse] = useState("");
   const [courseGrades, setCourseGrades] = useState<{ [key: string]: { grade: string; credits: number } }>({});
-
 
   const navigate = useNavigate();
 
@@ -31,12 +32,17 @@ const DegreeTracker = () => {
     { id: "CS597R", name: "CS MS Project - 597R", minCredits: 6 },
     { id: "CS599R", name: "CS MS Project - 599R", minCredits: 6 }
   ];
+  const thesisCourse = { id: "CS599R", name: "Master’s Thesis (9 Credits)" };
 
   // Calculate total credits
   const totalCredits = completedCourses.reduce((acc, courseId) => {
     const course = [...Object.values(coreCourses).flat(), ...electives].find(c => c.id === courseId);
     return course ? acc + course.credits : acc;
-  }, 0);
+  }, 0) + (selectedThesisCourse === thesisCourse.id ? 9 : 0); // Add 9 credits if thesis is selected
+  
+  if (track === "thesis" && semester === "Last" && !showThesisReminder) {
+    setShowThesisReminder(true);
+  }
 
   // Toggle course selection
   const toggleCourse = (courseId: string, credits: number) => {
@@ -136,7 +142,16 @@ const DegreeTracker = () => {
         <label className="block text-gray-700 font-medium">Select Your Track</label>
         <select
           value={track}
-          onChange={e => setTrack(e.target.value)}
+          onChange={e => {
+            const newTrack = e.target.value;
+            setTrack(newTrack);
+
+            // Remove thesis course when changing from thesis track
+            if (track === "thesis" && newTrack !== "thesis") {
+              setSelectedThesisCourse("");
+              setCompletedCourses(prev => prev.filter(id => id !== thesisCourse.id));
+            }
+          }}
           className="mt-1 p-2 border rounded-lg w-full"
         >
           {Object.entries(degreeTracks).map(([key, value]) => (
@@ -250,6 +265,43 @@ const DegreeTracker = () => {
         </select>
       </div>
 
+      {track === "thesis" && (
+        <div className="mt-6 bg-gray-100 border-l-4 border-gray-500 p-4">
+          <h2 className="text-gray-700 font-semibold">Thesis Requirement</h2>
+          
+          {/* Thesis Course Selection */}
+          <label className="mt-2 block text-gray-600 font-medium">Select Your Thesis Course</label>
+          <select
+            value={selectedThesisCourse}
+            onChange={e => {
+              const courseId = e.target.value;
+              setSelectedThesisCourse(courseId);
+
+              // Add thesis course to completed courses if selected
+              if (courseId === thesisCourse.id) {
+                setCompletedCourses(prev => [...prev, thesisCourse.id]);
+              } else {
+                setCompletedCourses(prev => prev.filter(id => id !== thesisCourse.id));
+              }
+            }}
+            className="mt-1 p-2 border rounded-lg w-full"
+          >
+            <option value="">Select a thesis course</option>
+            {[thesisCourse].map(course => (
+              <option key={course.id} value={course.id}>
+                {course.name}
+              </option>
+            ))}
+          </select>
+
+          {/* Show "Completed 9 Credits" when selected */}
+          {selectedThesisCourse && (
+            <p className="mt-2 text-green-600 font-semibold">✅ Completed 9 Credits</p>
+          )}
+        </div>
+      )}
+
+
       {/* Reduced Courseload Notification (Only for Last Semester) */}
       {semester === "Last" && (
         <div className="mt-4 bg-yellow-100 border-l-4 border-yellow-500 p-4">
@@ -261,6 +313,29 @@ const DegreeTracker = () => {
             className="mt-2 bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition"
           >
             Learn More
+          </button>
+        </div>
+      )}
+
+      {/* Thesis Completion Reminder (Only for Thesis Track & Last Semester) */}
+      {showThesisReminder && track === "thesis" && (
+        <div className="mt-4 bg-red-100 border-l-4 border-red-500 p-4">
+          <p className="text-red-700 font-medium">
+            ⚠️ You are in your last semester and on the Thesis Track! Please check the **Graduate School completion deadlines** to ensure all submission requirements are met.
+          </p>
+          <a
+            href="https://gs.emory.edu/academics/completion/index.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block mt-2 text-blue-600 font-semibold underline"
+          >
+            View Thesis Deadlines & Submission Info
+          </a>
+          <button
+            onClick={() => setShowThesisReminder(false)}
+            className="mt-2 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition"
+          >
+            Dismiss
           </button>
         </div>
       )}
