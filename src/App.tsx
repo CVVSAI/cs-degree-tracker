@@ -4,7 +4,7 @@ import Navbar from "./components/Navbar";
 import Home from "./pages/Home"; 
 import Courses from "./pages/Courses";
 import Settings from "./pages/Settings";
-import DegreeTracker from "./pages/DegreeTracker";
+import DegreeTracker from "./components/DegreeTracker";
 
 function App() {
   return (
