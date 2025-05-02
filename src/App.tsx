@@ -5,6 +5,8 @@ import Home from "./pages/Home";
 import Courses from "./pages/Courses";
 import Settings from "./pages/Settings";
 import DegreeTracker from "./components/DegreeTracker";
+import CourseOfferings from "./components/CourseOfferings";
+import Contact from "./pages/Contact";
 
 function App() {
   return (
@@ -16,6 +18,8 @@ function App() {
           <Route path="/degree-tracker" element={<DegreeTracker />} />
           <Route path="/courses" element={<Courses />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/course-offerings" element={<CourseOfferings />} />
+          <Route path="/contact" element={<Contact />} />
         </Routes>
       </div>
     </Router>

@@ -10,14 +10,9 @@ const Navbar = () => {
           </Link>
         </li>
         <li>
-          <Link to="/courses" className="hover:text-blue-400 transition duration-300">
-            Courses
-          </Link>
-        </li>
-        <li>
-          <Link to="/settings" className="hover:text-blue-400 transition duration-300">
-            Settings
-          </Link>
+        <Link to="/course-offerings" className="px-4 py-2 hover:text-blue-600">
+          Course Offerings
+        </Link>
         </li>
       </ul>
     </nav>
