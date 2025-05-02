@@ -99,19 +99,9 @@ The backend fetches authenticated XML data from Emory's OPUS service:
 ## 🔭 Future Work
 
 - 📅 Term/semester dropdown for filtering course offerings
-- 🗂️ Downloadable transcript or credit summary
-- 🔐 Login system with Emory NetID (SSO)
+- 🗂️ Upload transcript or credit summary
 - 📬 Email reminders for graduation and reduced course load deadlines
 - 📊 Charts to visualize progress over semesters
 
 ---
 
-## 🙌 Credits
-
-Developed by [Your Name] as part of Emory University’s CS Master's Program.
-
-Special thanks to:
-- Emory OPUS team for RESTful access
-- Emory CSI Faculty for requirements guidance
-
----
