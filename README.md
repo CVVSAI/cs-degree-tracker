@@ -41,7 +41,7 @@ The frontend runs at: `http://localhost:3000`
 
 ---
 
-## 🐍 Running the Flask Backend
+## Running the Flask Backend
 
 ```bash
 # Create virtual environment
@@ -98,6 +98,7 @@ The backend fetches authenticated XML data from Emory's OPUS service:
 
 ## 🔭 Future Work
 
+- 📦 Address CS584 issue and improve the UI
 - 📅 Term/semester dropdown for filtering course offerings
 - 🗂️ Upload transcript or credit summary
 - 📬 Email reminders for graduation and reduced course load deadlines
