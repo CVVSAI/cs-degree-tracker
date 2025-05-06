@@ -7,6 +7,7 @@ import Settings from "./pages/Settings";
 import DegreeTracker from "./components/DegreeTracker";
 import CourseOfferings from "./components/CourseOfferings";
 import Contact from "./pages/Contact";
+import ReducedCourseload from "./pages/ReducedCourseload";
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
           <Route path="/settings" element={<Settings />} />
           <Route path="/course-offerings" element={<CourseOfferings />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/reduced-courseload" element={<ReducedCourseload />} />
         </Routes>
       </div>
     </Router>

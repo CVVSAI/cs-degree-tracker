@@ -9,15 +9,21 @@ interface Props {
   selectedThesisCourse: string;
   setSelectedThesisCourse: (id: string) => void;
   thesisCourse: ThesisCourse;
+  thesisCredits: number;
+  setThesisCredits: (credits: number) => void;
   setCompletedCourses: React.Dispatch<React.SetStateAction<string[]>>;
 }
+
 
 const ThesisRequirement: React.FC<Props> = ({
   selectedThesisCourse,
   setSelectedThesisCourse,
   thesisCourse,
+  thesisCredits,
+  setThesisCredits,
   setCompletedCourses
 }) => {
+  
   return (
     <div className="mt-6 bg-gray-100 border-l-4 border-gray-500 p-4">
       <h2 className="text-gray-700 font-semibold">Thesis Requirement</h2>
@@ -45,8 +51,16 @@ const ThesisRequirement: React.FC<Props> = ({
         ))}
       </select>
 
-      {selectedThesisCourse && (
-        <p className="mt-2 text-green-600 font-semibold">✅ Completed 9 Credits</p>
+      <label className="mt-4 block text-gray-600 font-medium">Enter Thesis Credits</label>
+      <input
+        type="number"
+        min="9"
+        value={thesisCredits}
+        onChange={(e) => setThesisCredits(parseInt(e.target.value))}
+        className="mt-1 p-2 border rounded-lg w-full"
+      />
+      {thesisCredits < 9 && selectedThesisCourse && (
+        <p className="text-red-500 mt-2">⚠️ You need at least 9 credits for the thesis.</p>
       )}
     </div>
   );

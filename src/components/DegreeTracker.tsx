@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import TrackSelector from "./TrackSelector";
 import SemesterSelector from "./SemesterSelector";
 import ProgressBar from "./ProgressBar";
@@ -11,7 +10,8 @@ import Reminders from "./Reminders";
 import CoreCourses from "./CoreCourses";
 import PracticumSection from "./PracticumSection";
 import ElectivesSection from "./ElectivesSection";
-import { coreCourses, electives, degreeTracks } from "../data/courses";
+import { coreCourses, electives } from "../data/courses";
+import LiveElectives from "./LiveElectives";
 
 const gradePoints: { [key: string]: number } = {
   "A": 4.0, "A-": 3.7,
@@ -28,39 +28,98 @@ const DegreeTracker = () => {
   const [showElectives, setShowElectives] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [projectCourse, setProjectCourse] = useState("");
+  const [thesisCredits, setThesisCredits] = useState(0);
   const [showThesisReminder, setShowThesisReminder] = useState(false);
   const [projectCredits, setProjectCredits] = useState(0);
   const [showGpaTracker, setShowGpaTracker] = useState(false);
   const [selectedThesisCourse, setSelectedThesisCourse] = useState("");
   const [courseGrades, setCourseGrades] = useState<{ [key: string]: { grade: string; credits: number } }>({});
+  // Map to track the relationship between live electives and regular electives
+  const [courseRelationships, setCourseRelationships] = useState<{ [key: string]: string[] }>({});
 
-  const practicumCourse = { id: "CS596R", name: "Computer Science Master’s Practicum", credits: 1 };
+  const practicumCourse = { id: "CS596R", name: "Computer Science Master's Practicum", credits: 1 };
   const projectCourses = [
     { id: "CS597R", name: "CS MS Project - 597R", minCredits: 6 },
     { id: "CS599R", name: "CS MS Project - 599R", minCredits: 6 }
   ];
-  const thesisCourse = { id: "CS599R", name: "Master’s Thesis (9 Credits)" };
+  const thesisCourse = { id: "CS599R", name: "Master's Thesis (9 Credits)" };
 
-  // Calculate total credits
-  const totalCredits = completedCourses.reduce((acc, courseId) => {
-    const course = [...Object.values(coreCourses).flat(), ...electives].find(c => c.id === courseId);
+  const uniqueBaseCourses = new Set<string>();
+  for (const courseId of completedCourses) {
+    const [rawId] = courseId.split("-");
+    const baseId = rawId.split("_")[0]; // e.g., CS584
+    uniqueBaseCourses.add(baseId);
+  }
+  
+  const totalCredits = [...uniqueBaseCourses].reduce((acc, baseId) => {
+    const course = [...Object.values(coreCourses).flat(), ...electives].find(c => c.id === baseId);
     return course ? acc + course.credits : acc;
-  }, 0) + (selectedThesisCourse === thesisCourse.id ? 9 : 0); // Add 9 credits if thesis is selected
+  }, 0) + (selectedThesisCourse === thesisCourse.id ? thesisCredits: 0);
   
   if (track === "thesis" && semester === "Last" && !showThesisReminder) {
     setShowThesisReminder(true);
   }
 
-  // Toggle course selection
+  // Modified toggleCourse function to handle syncing between components
   const toggleCourse = (courseId: string, credits: number) => {
-    setCompletedCourses(prev =>
-      prev.includes(courseId)
-        ? prev.filter(id => id !== courseId)
-        : [...prev, courseId]
-    );
-
+    const baseId = courseId.split("-")[0].split("_")[0]; // e.g., "CS572"
+    
+    setCompletedCourses(prev => {
+      // Check if this course or any related course is already selected
+      const alreadySelected = prev.some(id => {
+        // Check if the current ID starts with the baseId
+        if (id.startsWith(baseId)) return true;
+        
+        // Check relationship mapping (for live electives to regular electives)
+        const relatedLiveIds = Object.keys(courseRelationships).filter(key => 
+          courseRelationships[key].includes(baseId)
+        );
+        if (relatedLiveIds.some(liveId => id.startsWith(liveId))) return true;
+        
+        // Check relationship mapping (for regular electives to live electives)
+        if (courseRelationships[baseId]?.some(relId => id.startsWith(relId))) return true;
+        
+        return false;
+      });
+    
+      if (alreadySelected) {
+        // Remove this course and any related courses
+        return prev.filter(id => {
+          const idBase = id.split("-")[0].split("_")[0];
+          if (idBase === baseId) return false;
+          
+          // Remove related live courses
+          if (courseRelationships[baseId]?.includes(idBase)) return false;
+          
+          // Remove if this is a live course and has related regular courses
+          const relatedLiveIds = Object.keys(courseRelationships).filter(key => 
+            courseRelationships[key].includes(baseId)
+          );
+          if (relatedLiveIds.some(liveId => idBase === liveId)) return false;
+          
+          return true;
+        });
+      } else {
+        return [...prev.filter(id => {
+          const idBase = id.split("-")[0].split("_")[0];
+          if (idBase === baseId) return false;
+          
+          // Remove related live courses
+          if (courseRelationships[baseId]?.includes(idBase)) return false;
+          
+          // Remove if this is a live course and has related regular courses
+          const relatedLiveIds = Object.keys(courseRelationships).filter(key => 
+            courseRelationships[key].includes(baseId)
+          );
+          if (relatedLiveIds.some(liveId => idBase === liveId)) return false;
+          
+          return true;
+        }), courseId];
+      }
+    });
+  
     if (!courseGrades[courseId]) {
-      setCourseGrades(prev => ({ ...prev, [courseId]: { grade: "A", credits } })); // Default grade
+      setCourseGrades(prev => ({ ...prev, [courseId]: { grade: "A", credits } }));
     }
   };
 
@@ -71,7 +130,6 @@ const DegreeTracker = () => {
   );
   if (!isCoreComplete) missingRequirements.push("Complete at least one course from each Core Subject Area");
 
-
   // Ensure the correct number of electives is taken based on the track
   const requiredElectives = track === "coursework" ? 7 : track === "project" ? 5 : 4;
   const completedElectives = electives.filter(course => completedCourses.includes(course.id)).length;
@@ -79,7 +137,7 @@ const DegreeTracker = () => {
   if (!isElectivesComplete) missingRequirements.push(`Complete at least ${requiredElectives} elective courses`);
 
   const isPracticumComplete = completedCourses.includes(practicumCourse.id);
-  if (!isPracticumComplete) missingRequirements.push("Complete CS 596R: Computer Science Master’s Practicum");
+  if (!isPracticumComplete) missingRequirements.push("Complete CS 596R: Computer Science Master's Practicum");
 
   const isProjectComplete = track !== "project" || (projectCourse && projectCredits >= 6);
   if (track === "project" && !isProjectComplete) missingRequirements.push("Select CS 597R or CS 599R and complete at least 6 project credits");
@@ -105,7 +163,7 @@ const DegreeTracker = () => {
       return;
     }
     if (!isPracticumComplete) {
-      setError("⚠️ You must complete CS 596R: Computer Science Master’s Practicum.");
+      setError("⚠️ You must complete CS 596R: Computer Science Master's Practicum.");
       return;
     }
     if (track === "project" && !isProjectComplete) {
@@ -113,6 +171,20 @@ const DegreeTracker = () => {
       return;
     }
     setError(""); // Clear error if all requirements are met
+  };
+
+  // Function to update the course relationships map
+  const updateCourseRelationship = (liveId: string, regularId: string) => {
+    setCourseRelationships(prev => {
+      const newMap = { ...prev };
+      if (!newMap[regularId]) {
+        newMap[regularId] = [];
+      }
+      if (!newMap[regularId].includes(liveId)) {
+        newMap[regularId] = [...newMap[regularId], liveId];
+      }
+      return newMap;
+    });
   };
 
   // Filter electives based on search query (Searches Course ID + Course Name)
@@ -172,6 +244,8 @@ const DegreeTracker = () => {
           selectedThesisCourse={selectedThesisCourse}
           setSelectedThesisCourse={setSelectedThesisCourse}
           thesisCourse={thesisCourse}
+          thesisCredits={thesisCredits}
+          setThesisCredits={setThesisCredits}
           setCompletedCourses={setCompletedCourses}
         />
       )}
@@ -203,6 +277,12 @@ const DegreeTracker = () => {
         toggleCourse={toggleCourse}
       />
 
+      <LiveElectives
+        completedCourses={completedCourses}
+        toggleCourse={toggleCourse}
+        updateCourseRelationship={updateCourseRelationship}
+      />
+
       <p className="mt-6 text-lg font-semibold text-gray-800">
         Total Credits Completed: {totalCredits}
       </p>
@@ -219,4 +299,4 @@ const DegreeTracker = () => {
   );
 };
 
-export default DegreeTracker; 
+export default DegreeTracker;

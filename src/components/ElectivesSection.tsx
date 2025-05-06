@@ -29,6 +29,25 @@ const ElectivesSection: React.FC<Props> = ({
     course.id.toLowerCase().includes(searchQuery.replace(/\s+/g, "").toLowerCase())
   );
 
+  const isCourseSelected = (courseId: string) => {
+    // Check if this exact course is selected
+    if (completedCourses.some(id => id.startsWith(courseId))) {
+      return true;
+    }
+    
+    // Check if any live version of this course is selected
+    // Live courses have format like "CS505_InstructorName-12345"
+    const baseNumber = courseId.replace(/[A-Za-z]/g, ''); // Extract just the number
+    return completedCourses.some(id => {
+      // Extract course number from potential live course ID
+      const match = id.match(/CS(\d+)_/);
+      if (match && match[1]) {
+        return match[1] === baseNumber;
+      }
+      return false;
+    });
+  };
+
   return (
     <div className="mt-6">
       <h2 className="text-xl font-semibold">Elective Courses</h2>
@@ -56,7 +75,7 @@ const ElectivesSection: React.FC<Props> = ({
               <label key={course.id} className="block mt-2">
                 <input
                   type="checkbox"
-                  checked={completedCourses.includes(course.id)}
+                  checked={isCourseSelected(course.id)}
                   onChange={() => toggleCourse(course.id, course.credits)}
                   className="mr-2"
                 />
